@@ -2,18 +2,17 @@ import json
 from datetime import datetime
 import requests
 
-from .common import ExceptionWithCode, respons_wrapper
-
-es_domain = 'http://127.0.0.1:9200'
+from .common import ExceptionWithCode, respons_wrapper, es_domain
 
 
 @respons_wrapper
-def get_abs_queries(request):
+def post_abs_queries(request):
   data = json.loads(request.body)
   src_type = data['src_type']
   query_str = data['query_str']
   page_from = data['page_from']
   page_size = data['page_size']
+  prefix = data.get('prefix', '')
 
   res = requests.post(
       url=f'{es_domain}/detail_{src_type}/_search',
@@ -26,6 +25,11 @@ def get_abs_queries(request):
                           'query_string': {
                               'default_field': 'text',
                               'query': query_str
+                          }
+                      },
+                      {
+                          'prefix': {
+                              'id': prefix
                           }
                       }
                   ]
@@ -56,7 +60,7 @@ def get_abs_queries(request):
           'text': d['_source']['text']
       }
       for uid, m, d in zip(ids, metas, details)]
-  print(f'[{datetime.now()}] get_abs_query: from {page_from-1} size {page_size}')
+  print(f'[{datetime.now()}] get_abs_query: {query_str}, from {page_from-1} size {page_size}')
   return {
       'items': items,
       'total_size': total_size
@@ -66,10 +70,9 @@ def get_abs_queries(request):
 @respons_wrapper
 def get_tree_doc(request):
   src_type = request.GET['src_type']
-  uid = request.GET['id']
+  prefix = request.GET['prefix']
 
-  parts = list(uid.split('-'))
-  index_from = 0
+  page_from = 0
   page_size = 50
   data = []
   while True:
@@ -82,22 +85,22 @@ def get_tree_doc(request):
                     'must': [
                         {
                             'prefix': {
-                                'id': uid
+                                'id': prefix
                             }
                         }
                     ]
                 }
             },
             'size': page_size,
-            'from': index_from
+            'from': page_from
         }).encode('utf8')
     ).json()
     total = res['hits']['total']['value']
     buffer = res['hits']['hits']
     data.extend(buffer)
-    if index_from+page_size < total:
-      index_from += page_size
+    if page_from+page_size < total:
+      page_from += page_size
     else:
       break
-  print(f'[{datetime.now()}] get_tree_doc: from id {uid}')
+  print(f'[{datetime.now()}] get_tree_doc: {prefix}')
   return [{'id': d['_source']['id'], 'text': d['_source']['text']} for d in data]

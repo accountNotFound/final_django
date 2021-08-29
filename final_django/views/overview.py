@@ -1,7 +1,8 @@
 import json
 from datetime import datetime
+import requests
 
-from .common import ExceptionWithCode, respons_wrapper
+from .common import ExceptionWithCode, respons_wrapper, es_domain, neo4j_conn
 
 
 @respons_wrapper
@@ -42,4 +43,52 @@ def get_top_refs(request):
   return {
       'nodes': nodes,
       'links': links
+  }
+
+
+@respons_wrapper
+def post_graph_queries(request):
+  data = json.loads(request.body)
+  query_str = data['query_str']
+
+  res = requests.post(
+      url=f'{es_domain}/meta_specif/_search',
+      headers={'Content-Type': 'application/json; charset=utf8'},
+      data=json.dumps({
+          'query': {
+              'bool': {
+                  'must': [
+                      {
+                          'query_string': {
+                              'default_field': 'title',
+                              'query': query_str
+                          }
+                      }
+                  ]
+              }
+          },
+          'size': 10,
+          'from': 0
+      }).encode('utf8')
+  ).json()
+  nodes = [{'id': d['_source']['id'], 'name': d['_source']['title'], 'index': 'specif'}
+           for d in res['hits']['hits']]
+
+  links = set()
+  for i in range(len(nodes)):
+    for j in range(len(nodes)):
+      if i == j:
+        continue
+      pairs = neo4j_conn.run(
+          f'match (a)-[r]->(b) where a.id="{nodes[j]["id"]}" and b.id="{nodes[i]["id"]}" \
+          return startNode(r), endNode(r) limit 10'
+      )
+      for a, b in pairs:
+        links.add((a['id'], b['id']))
+        nodes[i]['show'] = True
+
+  print(f'[{datetime.now()}] get_graph_queries: {query_str}')
+  return {
+      'nodes': nodes,
+      'links': [{'source': e[0], 'target': e[1]} for e in links]
   }

@@ -1,4 +1,10 @@
 from django.http import JsonResponse
+from py2neo import Graph
+
+es_domain = 'http://127.0.0.1:9200'
+
+neo4j_conn = Graph('http://127.0.0.1:7474',
+                   username='neo4j', password='admin')
 
 
 class ExceptionWithCode(Exception):
