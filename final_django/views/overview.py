@@ -36,8 +36,13 @@ def get_top_refs(request):
       links.add((from_, to))
 
   show_nodes = set([it[0] for it in top_k_ref_by])
-  nodes = [{'id': n, 'name': id2names[n], 'show': n in show_nodes}
-           for n in nodes]
+  nodes = [
+      {
+          'id': n,
+          'name': id2names[n],
+          'show': n in show_nodes,
+          'index': 'specif'
+      } for n in nodes]
   links = [{'source': e[0], 'target': e[1]} for e in links]
   print(f'[{datetime.now()}] get top_refs: {len(nodes)} nodes, {len(links)} links')
   return {
@@ -71,8 +76,13 @@ def post_graph_queries(request):
           'from': 0
       }).encode('utf8')
   ).json()
-  nodes = [{'id': d['_source']['id'], 'name': d['_source']['title'], 'index': 'specif'}
-           for d in res['hits']['hits']]
+  nodes = [
+      {
+          'id': d['_source']['id'],
+          'name': d['_source']['title'],
+          'index': 'specif',
+          'show': False
+      } for d in res['hits']['hits']]
 
   links = set()
   for i in range(len(nodes)):
@@ -87,8 +97,36 @@ def post_graph_queries(request):
         links.add((a['id'], b['id']))
         nodes[i]['show'] = True
 
-  print(f'[{datetime.now()}] get_graph_queries: {query_str}')
+  print(f'[{datetime.now()}] post_graph_queries: {query_str}')
   return {
       'nodes': nodes,
+      'links': [{'source': e[0], 'target': e[1]} for e in links]
+  }
+
+
+@respons_wrapper
+def get_center_relations(request):
+  node_id = request.GET.get('node_id', '')
+  if not node_id:
+    return {}
+  pairs = neo4j_conn.run(
+      f'match (a)-[r]-() where a.id="{node_id}" \
+      return startNode(r), endNode(r) limit 10'
+  )
+  nodes = set()
+  links = set()
+  for a, b in pairs:
+    nodes.add(a)
+    nodes.add(b)
+    links.add((a['id'], b['id']))
+  print(f'[{datetime.now()}] get_center_relations: {node_id}, count {len(nodes)}')
+  return {
+      'nodes': [
+          {
+              'id': n['id'],
+              'name': n['title'],
+              'index': 'specif',
+              'show': False
+          } for n in nodes],
       'links': [{'source': e[0], 'target': e[1]} for e in links]
   }
