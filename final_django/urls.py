@@ -20,6 +20,7 @@ from .views import overview, search
 urlpatterns = [
     path('top_refs', overview.get_top_refs),
     path('graph_queries', overview.post_graph_queries),
+    path('cypher_queries', overview.post_cypher_queries),
     path('center_queries', overview.get_center_relations),
     path('abs_queries', search.post_abs_queries),
     path('tree_doc', search.get_tree_doc)

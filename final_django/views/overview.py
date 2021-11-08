@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 import requests
+import itertools
 
 from .common import ExceptionWithCode, respons_wrapper, es_domain, neo4j_conn
 
@@ -41,7 +42,7 @@ def get_top_refs(request):
           'id': n,
           'name': id2names[n],
           'show': n in show_nodes,
-          'index': 'specif'
+          'type': 'specif'
       } for n in nodes]
   links = [{'source': e[0], 'target': e[1]} for e in links]
   print(f'[{datetime.now()}] get top_refs: {len(nodes)} nodes, {len(links)} links')
@@ -80,7 +81,7 @@ def post_graph_queries(request):
       {
           'id': d['_source']['id'],
           'name': d['_source']['title'],
-          'index': 'specif',
+          'type': 'specif',
           'show': False
       } for d in res['hits']['hits']]
 
@@ -100,6 +101,54 @@ def post_graph_queries(request):
   print(f'[{datetime.now()}] post_graph_queries: {query_str}')
   return {
       'nodes': nodes,
+      'links': [{'source': e[0], 'target': e[1]} for e in links]
+  }
+
+
+@respons_wrapper
+def post_cypher_queries(request):
+  data = json.loads(request.body)
+  head = f'name:"{data["head"]}"' if 'head' in data else ''
+  tail = f'name:"{data["tail"]}"' if 'tail' in data else ''
+  filter_dict = data.get('filterDict', {})
+
+  nodes = set()
+  links = set()
+  for comb in itertools.product(filter_dict.items()) if filter_dict else [[(0, 0)]]:
+    head_type = tail_type = rel_type = ''
+    head_id = tail_id = rel_group_id = ''
+    for k, v in comb:
+      if k == 'head_type':
+        head_type = f':{v}'
+      elif k == 'tail_type':
+        tail_type = f':{v}'
+      elif k == 'rel_type':
+        rel_type = f':{v}'
+      elif k == 'head_id':
+        head_id = f',id:{v}'
+      elif k == 'tail_id':
+        tail_id = f',id:{v}'
+      elif k == 'rel_group_id':
+        rel_group_id = f'{{group_id:{v}}}'
+    cql = f'match \
+          ({head_type}{{{head}{head_id}}})\
+          -[r{rel_type}{rel_group_id}]->\
+          ({tail_type}{{{tail}{tail_id}}}) \
+        return startNode(r), endNode(r) limit 100'
+    pairs = neo4j_conn.run(cql)
+    for a, b in pairs:
+      nodes.add(a)
+      nodes.add(b)
+      links.add((a['id'], b['id']))
+  print(f'[{datetime.now()}] post_cypher_queries, count {len(nodes)}')
+  return {
+      'nodes': [
+          {
+              'id': n['id'],
+              'name': n['name'],
+              'type': str(n.labels).strip(':'),
+              'show': True
+          } for n in nodes],
       'links': [{'source': e[0], 'target': e[1]} for e in links]
   }
 
@@ -125,7 +174,7 @@ def get_center_relations(request):
           {
               'id': n['id'],
               'name': n['title'],
-              'index': 'specif',
+              'type': 'specif',
               'show': False
           } for n in nodes],
       'links': [{'source': e[0], 'target': e[1]} for e in links]
