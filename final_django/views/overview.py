@@ -111,10 +111,13 @@ def post_cypher_queries(request):
   head = f'name:"{data["head"]}"' if 'head' in data else ''
   tail = f'name:"{data["tail"]}"' if 'tail' in data else ''
   filter_dict = data.get('filterDict', {})
+  filter_dict = {k: [(k, v) for v in vlist]
+                 for k, vlist in filter_dict.items()}
+  filter_dict['PAD'] = [('PAD', '')]
 
   nodes = set()
   links = set()
-  for comb in itertools.product(filter_dict.items()) if filter_dict else [[(0, 0)]]:
+  for comb in itertools.product(*filter_dict.values()):
     head_type = tail_type = rel_type = ''
     head_id = tail_id = rel_group_id = ''
     for k, v in comb:
@@ -131,15 +134,18 @@ def post_cypher_queries(request):
       elif k == 'rel_group_id':
         rel_group_id = f'{{group_id:{v}}}'
     cql = f'match \
-          ({head_type}{{{head}{head_id}}})\
+          ({head_type}{{{head}{head_id}}}) \
           -[r{rel_type}{rel_group_id}]->\
           ({tail_type}{{{tail}{tail_id}}}) \
-        return startNode(r), endNode(r) limit 100'
-    pairs = neo4j_conn.run(cql)
-    for a, b in pairs:
+        return r limit 30'
+    records = neo4j_conn.run(cql)
+    for rec in records:
+      a = rec[0].start_node
+      b = rec[0].end_node
+      r = rec[0].relationships[0]
       nodes.add(a)
       nodes.add(b)
-      links.add((a['id'], b['id']))
+      links.add((a['id'], b['id'], r))
   print(f'[{datetime.now()}] post_cypher_queries, count {len(nodes)}')
   return {
       'nodes': [
@@ -149,7 +155,17 @@ def post_cypher_queries(request):
               'type': str(n.labels).strip(':'),
               'show': True
           } for n in nodes],
-      'links': [{'source': e[0], 'target': e[1]} for e in links]
+      'links': [
+          {
+              'source': e[0],
+              'target': e[1],
+              'data': {
+                  'name': e[2]['name'],
+                  'group_id': e[2]['group_id'],
+                  'type': list(e[2].types())[0]
+              },
+              'show': True
+          } for e in links]
   }
 
 
