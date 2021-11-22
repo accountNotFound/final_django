@@ -112,14 +112,16 @@ def post_cypher_queries(request):
   tail = f'name:"{data["tail"]}"' if 'tail' in data else ''
   filter_dict = data.get('filterDict', {})
   filter_dict = {k: [(k, v) for v in vlist]
-                 for k, vlist in filter_dict.items()}
+                 for k, vlist in filter_dict.items() if vlist}
   filter_dict['PAD'] = [('PAD', '')]
 
   nodes = set()
   links = set()
   for comb in itertools.product(*filter_dict.values()):
     head_type = tail_type = rel_type = ''
-    head_id = tail_id = rel_group_id = ''
+    head_attrs = [head] if head else []
+    tail_attrs = [tail] if tail else []
+    rel_attrs = []
     for k, v in comb:
       if k == 'head_type':
         head_type = f':{v}'
@@ -128,16 +130,17 @@ def post_cypher_queries(request):
       elif k == 'rel_type':
         rel_type = f':{v}'
       elif k == 'head_id':
-        head_id = f',id:{v}'
+        head_attrs.append(f'id:"{v}"')
       elif k == 'tail_id':
-        tail_id = f',id:{v}'
+        tail_attrs.append(f'id:"{v}"')
       elif k == 'rel_group_id':
-        rel_group_id = f'{{group_id:{v}}}'
+        rel_attrs.append(f'group_id:"{v}"')
     cql = f'match \
-          ({head_type}{{{head}{head_id}}}) \
-          -[r{rel_type}{rel_group_id}]->\
-          ({tail_type}{{{tail}{tail_id}}}) \
+          ({head_type}  {{{",".join(head_attrs)}}}) \
+          -[r{rel_type} {{{",".join(rel_attrs)}}}]->\
+          ({tail_type}  {{{",".join(tail_attrs)}}}) \
         return r limit 30'
+    print('run:\n', cql)
     records = neo4j_conn.run(cql)
     for rec in records:
       a = rec[0].start_node
@@ -174,24 +177,37 @@ def get_center_relations(request):
   node_id = request.GET.get('node_id', '')
   if not node_id:
     return {}
-  pairs = neo4j_conn.run(
+  records = neo4j_conn.run(
       f'match (a)-[r]-() where a.id="{node_id}" \
-      return startNode(r), endNode(r) limit 10'
+      return r limit 10'
   )
   nodes = set()
   links = set()
-  for a, b in pairs:
+  for rec in records:
+    a = rec[0].start_node
+    b = rec[0].end_node
+    r = rec[0].relationships[0]
     nodes.add(a)
     nodes.add(b)
-    links.add((a['id'], b['id']))
+    links.add((a['id'], b['id'], r))
   print(f'[{datetime.now()}] get_center_relations: {node_id}, count {len(nodes)}')
   return {
       'nodes': [
           {
               'id': n['id'],
-              'name': n['title'],
-              'type': 'specif',
-              'show': False
+              'name': n['name'],
+              'type': str(n.labels).strip(':'),
+              'show': True
           } for n in nodes],
-      'links': [{'source': e[0], 'target': e[1]} for e in links]
+      'links': [
+          {
+              'source': e[0],
+              'target': e[1],
+              'data': {
+                  'name': e[2]['name'],
+                  'group_id': e[2]['group_id'],
+                  'type': list(e[2].types())[0]
+              },
+              'show': True
+          } for e in links]
   }
