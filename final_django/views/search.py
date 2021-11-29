@@ -22,9 +22,8 @@ def post_abs_queries(request):
               'bool': {
                   'must': [
                       {
-                          'query_string': {
-                              'default_field': 'text',
-                              'query': query_str
+                          'match_phrase': {
+                              'text': query_str
                           }
                       },
                       {
@@ -35,6 +34,13 @@ def post_abs_queries(request):
                   ]
               }
           },
+          'sort': [
+              {
+                  'raes_count': {
+                      'order': 'desc'
+                  }
+              }
+          ],
           'size': page_size,
           'from': page_from-1
       }).encode('utf8')
@@ -102,5 +108,34 @@ def get_tree_doc(request):
       page_from += page_size
     else:
       break
+
+  res = requests.get(
+      url=f'{es_domain}/meta_{src_type}/_search',
+      headers={'Content-Type': 'application/json; charset=utf8'},
+      data=json.dumps({
+          'query': {
+              'bool': {
+                  'must': [
+                      {
+                          'match': {
+                              'id': prefix.split('@')[0]
+                          }
+                      }
+                  ]
+              }
+          },
+          'size': 10,
+          'from': 0
+      }).encode('utf8')
+  ).json()
+  print(f'"{prefix.split("@")[0]}"')
+  title = res['hits']['hits'][0]['_source']['title']
+
   print(f'[{datetime.now()}] get_tree_doc: {prefix}')
-  return [{'id': d['_source']['id'], 'text': d['_source']['text']} for d in data]
+  tree_ls = [{'id': d['_source']['id'], 'text': d['_source'].get('text', '')}
+             for d in data]
+  tree_ls.sort(key=lambda it: it['id'])
+  return {
+      'title': title,
+      'tree': tree_ls
+  }
