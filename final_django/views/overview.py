@@ -108,8 +108,9 @@ def post_graph_queries(request):
 @respons_wrapper
 def post_cypher_queries(request):
   data = json.loads(request.body)
-  head = f'name:"{data["head"]}"' if 'head' in data else ''
-  tail = f'name:"{data["tail"]}"' if 'tail' in data else ''
+  head = f'name:"{data["head"]}"' if data.get('head', '') else ''
+  tail = f'name:"{data["tail"]}"' if data.get('tail', '') else ''
+  dir_ = '>' if 'dir' in data else ''
   filter_dict = data.get('filterDict', {})
   filter_dict = {k: [(k, v) for v in vlist]
                  for k, vlist in filter_dict.items() if vlist}
@@ -137,7 +138,7 @@ def post_cypher_queries(request):
         rel_attrs.append(f'group_id:"{v}"')
     cql = f'match \
           ({head_type}  {{{",".join(head_attrs)}}}) \
-          -[r{rel_type} {{{",".join(rel_attrs)}}}]->\
+          -[r{rel_type} {{{",".join(rel_attrs)}}}]- \
           ({tail_type}  {{{",".join(tail_attrs)}}}) \
         return r limit 30'
     print('run:\n', cql)
