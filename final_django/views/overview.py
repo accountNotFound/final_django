@@ -166,7 +166,8 @@ def post_cypher_queries(request):
               'data': {
                   'name': e[2]['name'],
                   'group_id': e[2]['group_id'],
-                  'type': list(e[2].types())[0]
+                  'type': list(e[2].types())[0],
+                  'source_type': e[2]['index']
               },
               'show': True
           } for e in links]
