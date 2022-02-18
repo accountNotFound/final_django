@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import overview, search
+from .views import overview, search, example
 
 urlpatterns = [
     path('top_refs', overview.get_top_refs),
@@ -23,5 +23,6 @@ urlpatterns = [
     path('cypher_queries', overview.post_cypher_queries),
     path('center_queries', overview.get_center_relations),
     path('abs_queries', search.post_abs_queries),
-    path('tree_doc', search.get_tree_doc)
+    path('tree_doc', search.get_tree_doc),
+    path('traceback_example', example.traceback_example)
 ]
