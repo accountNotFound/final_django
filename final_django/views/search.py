@@ -22,7 +22,7 @@ def post_abs_queries(request):
               'bool': {
                   'must': [
                       {
-                          'match_phrase': {
+                          'match': {
                               'text': query_str
                           }
                       },
@@ -34,13 +34,13 @@ def post_abs_queries(request):
                   ]
               }
           },
-          'sort': [
-              {
-                  'raes_count': {
-                      'order': 'desc'
-                  }
-              }
-          ],
+          #   'sort': [
+          #       {
+          #           'raes_count': {
+          #               'order': 'desc'
+          #           }
+          #       }
+          #   ],
           'size': page_size,
           'from': page_from-1
       }).encode('utf8')
