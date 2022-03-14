@@ -51,7 +51,7 @@ def align(lines: list) -> list:
 
   i = 0
   while i < len(lines):
-    print(f'{i}/{len(lines)}', end='\r')
+    # print(f'{i}/{len(lines)}', end='\r')
     if lines[i].startswith('6．2．9  抗震设计时'):
       a = 1
 

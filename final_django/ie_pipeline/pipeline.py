@@ -124,7 +124,7 @@ def completes2graphs(completes: Dict[str, List[RaesResult]]) -> List[Graph]:
         triples = get_triples_by_RAES(*raes)
         graphs.append(Graph(f'{uid}*{i}', triples))
       except Exception as e:
-        print(raes)
+        # print(raes)
         graphs.append([])
   return list(filter(bool, graphs))
 
