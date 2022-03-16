@@ -140,12 +140,23 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
     for join in tgt_head_joins:
       if head.name[-2:] == join.name[-2:]:
         a = join
+        tgt_triple = (a, b, r)
         found = True
         break
     if not found:
       return 'ignore', f'obj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
   if not is_constant(b.name):
-    return 'ignore', f'unsupport match: {_str(src_triple)} && {_str(tgt_triple)}'
+    if tail.name[-2:] != b.name[-2:]:
+      return 'error', f'sbj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
+    else:
+      edge_elements = str(sorted(edge.name.replace('/', '')))
+      r_elements = str(sorted(r.name.replace('/', '')))
+      if edge_elements != r_elements:
+        status = 'warning' if '宜' in r_elements or '可' in r_elements else 'error'
+        return 'warning', f'relation dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
+      else:
+        return 'pass', f'sbj smatch: {_str(src_triple)} && {_str(tgt_triple)}'
+    # return 'ignore', f'unsupport match: {_str(src_triple)} && {_str(tgt_triple)}'
 
   # 匹配成功，解析数量和量纲
   tail_quant, tail_dim = parse_constant(tail.name)
@@ -161,7 +172,7 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
   range_ = parse_range(edge.name, tail_quant)
   tgt_range = parse_range(r.name, b_quant)
   if tgt_range[0] <= range_[0] and range_[1] <= tgt_range[1]:
-    return 'pass', f'match {_str(src_triple)} && {_str(tgt_triple)}'
+    return 'pass', f'quant match {_str(src_triple)} && {_str(tgt_triple)}'
   elif tgt_range[2] == 'should':
     return 'warning', \
         f'const check failed (should): {_str(src_triple)} && {_str(tgt_triple)}'
@@ -193,17 +204,25 @@ def _match_graph(src_graph: pipeline.Graph, tgt_graph: pipeline.Graph) -> List[T
   tgt_joins = id2joins(tgt_graph)
 
   res = []
+  vis = set()
   for src_edge, tgt_edge in itertools.product(src_graph.edges, tgt_graph.edges):
     src_head, src_tail = src_nodes[src_edge.start_id], src_nodes[src_edge.end_id]
     tgt_head, tgt_tail = tgt_nodes[tgt_edge.start_id], tgt_nodes[tgt_edge.end_id]
     if src_edge.type == tgt_edge.type == 'predicate':
       for join_id in src_joins.get(src_head.id, []):
-        check_res, reason = _match_spo(
-            (src_nodes[join_id], src_tail, src_edge),
-            (tgt_head, tgt_tail, tgt_edge),
-            [tgt_nodes[j] for j in tgt_joins.get(tgt_head.id, [])]
-        )
-        res.append({'status': check_res, 'detail': reason})
+        check_res = reason = None
+        try:
+          check_res, reason = _match_spo(
+              (src_nodes[join_id], src_tail, src_edge),
+              (tgt_head, tgt_tail, tgt_edge),
+              [tgt_nodes[j] for j in tgt_joins.get(tgt_head.id, [])]
+          )
+        except Exception as e:
+          reason = str(e)
+        finally:
+          if reason not in vis:
+            vis.add(reason)
+            res.append({'status': check_res, 'detail': reason})
     else:
       # TODO
       pass
@@ -266,8 +285,11 @@ def post_traceback_check(request):
       })
 
     if len(check_on_text) > 0:
-      check_on_doc[uid] = list(
-          sorted(check_on_text, key=lambda it: -it['source']['tf_idf']*20-it['source']['page_rank']))[:each_check_num]
-      # check_on_doc[uid] = check_on_text[:each_check_num]
-
-  return check_on_doc
+      check_on_doc[uid] = {
+          'check_result': list(
+              sorted(check_on_text,
+                     key=lambda it: -it['source']['tf_idf']*20-it['source']['page_rank'])
+          )[:each_check_num],
+          'raw_text': text
+          # check_on_doc[uid] = check_on_text[:each_check_num]
+      }
