@@ -293,3 +293,4 @@ def post_traceback_check(request):
           'raw_text': text
           # check_on_doc[uid] = check_on_text[:each_check_num]
       }
+  return check_on_doc

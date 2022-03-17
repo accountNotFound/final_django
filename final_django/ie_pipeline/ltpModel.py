@@ -15,7 +15,6 @@ if PRODUCT_ENV:
     segs, hidden = model.seg(seqs)
     poses = model.pos(hidden)
     deps = model.dep(hidden)
-    print(f'parse {len(seqs)} sentences')
     return {
         'segs': segs,
         'poses': poses,
