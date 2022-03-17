@@ -3,6 +3,35 @@ import json
 from queue import Queue
 from typing import List
 
+from manage import PRODUCT_ENV
+
+if PRODUCT_ENV:
+  from ltp import LTP
+  model = LTP()
+  # model.init_dict(path='shared_output/domain_dict.txt')
+  # print(f'model inited with shared_output/domain_dict.txt')
+
+  def parse(seqs):
+    segs, hidden = model.seg(seqs)
+    poses = model.pos(hidden)
+    deps = model.dep(hidden)
+    print(f'parse {len(seqs)} sentences')
+    return {
+        'segs': segs,
+        'poses': poses,
+        'deps': deps
+    }
+
+else:
+
+  def parse(seqs):
+    return requests.post(
+        url='http://127.0.0.1:6789',
+        data=json.dumps({
+            'seqs': seqs
+        }).encode('utf8')
+    ).json()
+
 
 class LtpModel:
   def __init__(self, seg, pos, dep):
@@ -130,12 +159,7 @@ class LtpModel:
 
 def get_ltp_results(seqs: list) -> List[LtpModel]:
   seqs = list(map(lambda s: s if s else '#', seqs))
-  resp = requests.post(
-      url='http://127.0.0.1:6789',
-      data=json.dumps({
-          'seqs': seqs
-      }).encode('utf8')
-  ).json()
+  resp = parse(seqs)
   res = []
   for seg, pos, dep in zip(resp['segs'], resp['poses'], resp['deps']):
     res.append(LtpModel(seg, pos, dep))
