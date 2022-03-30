@@ -1,8 +1,11 @@
 from django.http import JsonResponse
 from py2neo import Graph
 
-# es_domain = 'http://127.0.0.1:9200'
-es_domain = 'http://192.168.100.217:9200'
+from manage import PRODUCT_ENV
+if PRODUCT_ENV:
+  es_domain = 'http://192.168.100.217:9200'
+else:
+  es_domain = 'http://127.0.0.1:9200'
 
 neo4j_conn = Graph('http://127.0.0.1:7474', auth=('neo4j', 'admin'))
 

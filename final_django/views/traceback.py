@@ -123,12 +123,12 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
 
     low = -1e9
     high = 1e9
-    if '大' in token:
+    if '大' in token or '>' in token:
       if not_op:
         high = quant
       else:
         low = quant
-    elif '小' in token:
+    elif '小' in token or '<' in token:
       if not_op:
         low = quant
       else:
