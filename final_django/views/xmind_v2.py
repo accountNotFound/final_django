@@ -25,8 +25,8 @@ def post_xmind_source_expand(request):
   data = json.loads(request.body)
   prev_path = data['prev_path']
   last_node_name = data['last_node_name']
-  query_link_gid = data['query_link_gid']
-  limit_num = data['limit_num']
+  query_link_gid = data['query_link_gid']  # ""
+  limit_num = data['limit_num']  # 3
 
   cql_path = ''
   for i, p in enumerate(prev_path):
@@ -43,9 +43,18 @@ def post_xmind_source_expand(request):
   else:
     cql_filters = f'WHERE rtarget.group_id="{query_link_gid}"'
 
-  cql = f'MATCH {cql_path} {cql_filters} RETURN rtarget AS rel, ntarget AS tgt LIMIT {limit_num}'
+  cql =\
+      f'MATCH {cql_path} {cql_filters} \
+       WITH ntarget, rtarget LIMIT 300 \
+       WITH ntarget AS tgt, collect(rtarget) AS rels, count(rtarget) AS rcnt\
+       ORDER BY rcnt\
+       DESC \
+       RETURN tgt, rels\
+       LIMIT {limit_num}'
   print('xmind source expand:\n', cql)
-  return neo4j_conn.run(cql).data()
+  res = neo4j_conn.run(cql).data()
+  print(res)
+  return res
 
 
 @respons_wrapper
@@ -98,6 +107,13 @@ def post_xmind_target_query(request):
   else:
     cql_filters = f'WHERE rtarget.group_id="{query_link_gid}"'
 
-  cql = f'MATCH {cql_path} {cql_filters} RETURN rtarget AS rel, ntarget AS tgt LIMIT {limit_num}'
+  cql =\
+      f'MATCH {cql_path} {cql_filters} \
+       WITH ntarget, rtarget LIMIT 300 \
+       WITH ntarget AS tgt, collect(rtarget) AS rels, count(rtarget) AS rcnt\
+       ORDER BY rcnt\
+       DESC \
+       RETURN tgt, rels\
+       LIMIT 1'
   print('xmind target query:\n', cql)
   return neo4j_conn.run(cql).data()

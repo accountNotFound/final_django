@@ -3,7 +3,7 @@
 import os
 import sys
 
-PRODUCT_ENV = True
+PRODUCT_ENV = False
 
 
 def main():
