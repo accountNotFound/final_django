@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import overview, search, example, traceback, xmind_v2
+from .views import overview, search, example, traceback, xmind
 
 urlpatterns = [
     path('top_refs', overview.get_top_refs),
@@ -26,6 +26,6 @@ urlpatterns = [
     path('tree_doc', search.get_tree_doc),
     path('traceback_example', example.traceback_example),
     path('traceback_check', traceback.post_traceback_check),
-    path('xmind_source_expand', xmind_v2.post_xmind_source_expand),
-    path('xmind_target_query', xmind_v2.post_xmind_target_query)
+    path('xmind_source_expand', xmind.post_xmind_source_expand),
+    path('xmind_target_query', xmind.post_xmind_target_query)
 ]
