@@ -129,31 +129,31 @@ def completes2graphs(completes: Dict[str, List[RaesResult]]) -> List[Graph]:
   return list(filter(bool, graphs))
 
 
-def pipeline(doc: str, namespace='.ROOT') -> Dict[str, Graph]:
+def pipeline(doc: str, namespace='.ROOT') -> List[Graph]:
   tree = doc2tree(doc)
   completes = tree2completes(tree)
   graphs = completes2graphs(completes)
   return list(filter(bool, graphs))
 
 
-TEXT_TYPE = None
+# TEXT_TYPE = None
 
 
-def get_types(data: Iterable) -> List[str]:
-  global TEXT_TYPE
-  if TEXT_TYPE == None:
-    with open('shared_output/classes.json', 'r', encoding='utf8') as fin:
-      TEXT_TYPE = json.load(fin)[0]['topic']['topics']
+# def get_types(data: Iterable) -> List[str]:
+#   global TEXT_TYPE
+#   if TEXT_TYPE == None:
+#     with open('shared_output/classes.json', 'r', encoding='utf8') as fin:
+#       TEXT_TYPE = json.load(fin)[0]['topic']['topics']
 
-  res = []
+#   res = []
 
-  def dfs(node):
-    if 'topics' in node:
-      for nxt in node['topics']:
-        if dfs(nxt):
-          return True
-    if node['title'] in data:
-      res.append(node['title'])
-      return True
-    return False
-  return res
+#   def dfs(node):
+#     if 'topics' in node:
+#       for nxt in node['topics']:
+#         if dfs(nxt):
+#           return True
+#     if node['title'] in data:
+#       res.append(node['title'])
+#       return True
+#     return False
+#   return res

@@ -5,6 +5,8 @@ from ltpModel import LtpModel, get_ltp_results
 
 
 def get_targets(ltp_model: LtpModel, idx: int):
+  if type(idx) != int:
+    return {'name': 'placeholder', 'type': 'object', 'attrs': []}, []
   head = {
       'name': ltp_model.seg[idx],
       'type': 'object',
