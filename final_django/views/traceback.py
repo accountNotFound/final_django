@@ -93,7 +93,7 @@ def _str(triple):
   return f'({a.name})-[{r.name.replace("/", "")}]->({b.name})'
 
 
-def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeline.Graph.Node]) -> (str, str):
+def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeline.Graph.Node], is_question_key=None) -> (str, str):
   '''triple should be (headNode, tailNode, Edge)'''
   head, tail, edge = src_triple
   a, b, r = tgt_triple
@@ -145,15 +145,23 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
         break
     if not found:
       return 'ignore', f'obj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
+
+  # the qa.py will exceute this condition logic
+  if is_question_key != None:
+    edge_elements = set((edge.name.replace('/', '')))
+    r_elements = set((r.name.replace('/', '')))
+    if len(edge_elements & r_elements)/len(edge_elements | r_elements) > 0.5:
+      return 'q&a', f'{_str(src_triple)} && {_str(tgt_triple)}'
+
   if not is_constant(b.name):
     if tail.name[-2:] != b.name[-2:]:
       return 'error', f'sbj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
     else:
-      edge_elements = str(sorted(edge.name.replace('/', '')))
-      r_elements = str(sorted(r.name.replace('/', '')))
-      if edge_elements != r_elements:
+      edge_elements = set((edge.name.replace('/', '')))
+      r_elements = set((r.name.replace('/', '')))
+      if len(edge_elements & r_elements)/len(edge_elements | r_elements) < 0.5:
         status = 'warning' if '宜' in r_elements or '可' in r_elements else 'error'
-        return 'warning', f'relation dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
+        return status, f'relation dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
       else:
         return 'pass', f'sbj smatch: {_str(src_triple)} && {_str(tgt_triple)}'
     # return 'ignore', f'unsupport match: {_str(src_triple)} && {_str(tgt_triple)}'
@@ -181,7 +189,7 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
         f'const check failed (must): {_str(src_triple)} && {_str(tgt_triple)}'
 
 
-def _match_graph(src_graph: pipeline.Graph, tgt_graph: pipeline.Graph) -> List[Tuple[str, str]]:
+def _match_graph(src_graph: pipeline.Graph, tgt_graph: pipeline.Graph, is_question_key=None) -> List[Tuple[str, str]]:
   def id2node(graph):
     return {n.id: n for n in graph.nodes}
 
@@ -215,7 +223,8 @@ def _match_graph(src_graph: pipeline.Graph, tgt_graph: pipeline.Graph) -> List[T
           check_res, reason = _match_spo(
               (src_nodes[join_id], src_tail, src_edge),
               (tgt_head, tgt_tail, tgt_edge),
-              [tgt_nodes[j] for j in tgt_joins.get(tgt_head.id, [])]
+              [tgt_nodes[j] for j in tgt_joins.get(tgt_head.id, [])],
+              is_question_key
           )
         except Exception as e:
           reason = str(e)
@@ -229,13 +238,13 @@ def _match_graph(src_graph: pipeline.Graph, tgt_graph: pipeline.Graph) -> List[T
   return res
 
 
-@respons_wrapper
-def post_traceback_check(request):
-  data = json.loads(request.body)
-  doc = data['doc']
-  src_type = data['src_type']
-  each_check_num = data.get('each_check_num', 30)
-
+def _traceback_check(doc, src_type, each_check_num=30, is_question_key=None):
+  '''
+  @args:
+  is_question_key:  None | Callable(str)->bool, it will be used in _match_spo finally. 
+                    if this arg is given, then it means a question-str parse and query task need to be solved.
+                    this arg will be specified in qa.py 
+  '''
   tree = pipeline.doc2tree(doc)
   id2seq = pipeline.tree2dict(tree, '.CHECK')
   id2completes = pipeline.tree2completes(tree, '.CHECK')
@@ -266,7 +275,7 @@ def post_traceback_check(request):
                        for i, raes in enumerate(specif_raes_list)]
       specif_graphs = list(filter(bool, specif_graphs))
       for graph, specif_graph in itertools.product(graphs, specif_graphs):
-        check_on_graph = _match_graph(graph, specif_graph)
+        check_on_graph = _match_graph(graph, specif_graph, is_question_key)
         check_on_graph = list(
             filter(lambda it: it['status'] != 'ignore', check_on_graph))
         check_on_specif.append(check_on_graph)
@@ -294,3 +303,12 @@ def post_traceback_check(request):
           # check_on_doc[uid] = check_on_text[:each_check_num]
       }
   return check_on_doc
+
+
+@respons_wrapper
+def post_traceback_check(request):
+  data = json.loads(request.body)
+  doc = data['doc']
+  src_type = data['src_type']
+  each_check_num = data.get('each_check_num', 30)
+  return _traceback_check(doc, src_type, each_check_num)

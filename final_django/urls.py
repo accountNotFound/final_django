@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from .views import overview, search, example, traceback, xmind, gparse
+from .views import overview, search, example, traceback, xmind, gparse, qa
 
 urlpatterns = [
     path('top_refs', overview.get_top_refs),
@@ -29,5 +29,6 @@ urlpatterns = [
     path('xmind_source_expand', xmind.post_xmind_source_expand),
     path('xmind_target_query', xmind.post_xmind_target_query),
     path('xmind_detail_query', xmind.post_xmind_detail_query),
-    path('parse_seq', gparse.post_parse)
+    path('parse_seq', gparse.post_parse),
+    path('question_answering', qa.post_question)
 ]
