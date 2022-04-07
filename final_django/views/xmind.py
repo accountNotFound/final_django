@@ -46,7 +46,8 @@ def post_xmind_source_expand(request):
   cql =\
       f'MATCH {cql_path} {cql_filters} \
        WITH ntarget, rtarget LIMIT 300 \
-       WITH ntarget AS tgt, collect(rtarget) AS rels, count(rtarget) AS rcnt\
+       WITH ntarget, {{rdata: rtarget, rtype: type(rtarget)}} AS rel \
+       WITH ntarget AS tgt, collect(DISTINCT rel) AS rels, count(rel) AS rcnt\
        ORDER BY rcnt\
        DESC \
        RETURN tgt, rels\
@@ -110,7 +111,8 @@ def post_xmind_target_query(request):
   cql =\
       f'MATCH {cql_path} {cql_filters} \
        WITH ntarget, rtarget LIMIT 300 \
-       WITH ntarget AS tgt, collect(rtarget) AS rels, count(rtarget) AS rcnt\
+       WITH ntarget, {{rdata: rtarget, rtype: type(rtarget)}} AS rel\
+       WITH ntarget AS tgt, collect(DISTINCT rel) AS rels, count(rel) AS rcnt\
        ORDER BY rcnt\
        DESC \
        RETURN tgt, rels\
