@@ -1,6 +1,7 @@
 import json
-
+import requests
 from .common import ExceptionWithCode, respons_wrapper, es_domain, neo4j_conn
+from .traceback import _es_query
 
 
 def _rel2str(link_name, link_type):
@@ -119,3 +120,21 @@ def post_xmind_target_query(request):
        LIMIT 1'
   print('xmind target query:\n', cql)
   return neo4j_conn.run(cql).data()
+
+
+@respons_wrapper
+def post_xmind_detail_query(request):
+  data = json.loads(request.body)
+  gid = data['gid']
+  src_type = data['src_type']
+
+  text = next(
+      _es_query(f'detail_{src_type}', 'match', 'id', gid.split('*')[0])
+  )['_source']['text']
+  title = next(
+      _es_query(f'meta_{src_type}', 'match', 'id', gid.split('@')[0])
+  )['_source']['title']
+  return {
+      'text': text,
+      'title': title
+  }

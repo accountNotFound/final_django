@@ -28,5 +28,6 @@ urlpatterns = [
     path('traceback_check', traceback.post_traceback_check),
     path('xmind_source_expand', xmind.post_xmind_source_expand),
     path('xmind_target_query', xmind.post_xmind_target_query),
+    path('xmind_detail_query', xmind.post_xmind_detail_query),
     path('parse_seq', gparse.post_parse)
 ]
