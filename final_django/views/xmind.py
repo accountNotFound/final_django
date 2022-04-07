@@ -100,7 +100,7 @@ def post_xmind_target_query(request):
     cql_path += _rel2str(f'r{i}', link_type)
   cql_path += f'(nlast{{name:"{last_node_name}"}})'
   cql_path += _rel2str("rtarget", query_link_type)
-  cql_path += f'(ntarget{{name:"{query_node_name}"}})' if query_node_name else '(ntarget)'
+  cql_path += '(ntarget)'
 
   if not query_link_gid:
     cql_filters = [
@@ -108,6 +108,8 @@ def post_xmind_target_query(request):
     cql_filters = f'WHERE {" AND ".join(cql_filters)}' if cql_filters else ''
   else:
     cql_filters = f'WHERE rtarget.group_id="{query_link_gid}"'
+  if cql_filters and query_node_name:
+    cql_filters += f' AND ntarget.name=~".*{query_node_name}.*"'
 
   cql =\
       f'MATCH {cql_path} {cql_filters} \
