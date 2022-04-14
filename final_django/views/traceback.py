@@ -155,7 +155,7 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
 
   if not is_constant(b.name):
     if tail.name[-2:] != b.name[-2:]:
-      return 'error', f'sbj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
+      return 'ignore', f'sbj dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
     else:
       edge_elements = set((edge.name.replace('/', '')))
       r_elements = set((r.name.replace('/', '')))
@@ -163,7 +163,7 @@ def _match_spo(src_triple: tuple, tgt_triple: tuple, tgt_head_joins: List[pipeli
         status = 'warning' if '宜' in r_elements or '可' in r_elements else 'error'
         return status, f'relation dismatch: {_str(src_triple)} && {_str(tgt_triple)}'
       else:
-        return 'pass', f'sbj smatch: {_str(src_triple)} && {_str(tgt_triple)}'
+        return 'pass', f'sbj match: {_str(src_triple)} && {_str(tgt_triple)}'
     # return 'ignore', f'unsupport match: {_str(src_triple)} && {_str(tgt_triple)}'
 
   # 匹配成功，解析数量和量纲
